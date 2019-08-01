@@ -1,3 +1,54 @@
+# setup
+
+```
+#https://github.com/google/deepvariant/blob/r0.8/docs/deepvariant-quick-start.md from https://github.com/google/deepvariant/blob/r0.6/docs/deepvariant-quick-start.md , skipping https://github.com/google/deepvariant/blob/r0.7/docs/deepvariant-quick-start.md
+#cleanup
+sudo apt -y remove containerd.io
+sudo apt -y autoremove
+#install gcloud
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+sudo apt-get install apt-transport-https ca-certificates
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+sudo apt-get update && sudo apt-get install google-cloud-sdk
+gcloud init
+gcloud auth login
+#to run in parallel
+sudo apt -y install parallel
+#clone deepvariant
+git clone https://github.com/animesh/deepvariant.git
+cd deepvariant
+#install deepvariant
+#ERROR: markdown 3.1.1 has requirement setuptools>=36, but you'll have setuptools 20.7.0 which is incompatible.
+pip install setuptools-markdown --upgrade --user
+./build-prereq.sh
+#test build
+./build_and_test.sh
+./run-prereq.sh
+#sudo ln -s $PWD/bazel-bin/deepvariant /opt/deepvariant
+ls bazel-bin/deepvariant/
+#sudo ln -s /home/animeshs/deepvariant/bazel-bin/deepvariant /opt/deepvariant/bin
+#https://github.com/google/deepvariant/issues/199
+scripts/run_wes_case_study_binaries.sh
+#running on example dataset
+gsutil cp -R gs://deepvariant/quickstart-testdata .
+mkdir -p quickstart-output
+gsutil cp -R gs://deepvariant/models/DeepVariant/0.8.0 .
+#make examples
+python bazel-bin/deepvariant/make_examples.zip --mode calling  --ref quickstart-testdata/ucsc.hg19.chr20.unittest.fasta --reads quickstart-testdata/NA12878_S1.chr20.10_10p1mb.bam --regions "chr20:10,000,000-10,010,000" --examples quickstart-output/examples.tfrecord.gz #--gvcf quickstart-output/examples.tfrecord.vcf.gz
+#call variants
+python ./bazel-bin/deepvariant/call_variants.zip --outfile quickstart-output/examples.tfrecord.cvo.gz --examples quickstart-output/examples.tfrecord.gz --checkpoint 0.8.0/DeepVariant-inception_v3-0.8.0+data-wgs_standard/model.ckpt
+#postprocess/generate vcf
+python ./bazel-bin/deepvariant/postprocess_variants.zip --ref quickstart-testdata/ucsc.hg19.chr20.unittest.fasta --infile  quickstart-output/examples.tfrecord.cvo.gz --outfile  quickstart-output/examples.vcf
+#compare results with gold-standard
+git clone https://github.com/Illumina/hap.py
+cd hap.py
+sudo apt-get install default-jdk ant
+src/sh/make_hg19.sh
+export HGREF=hg19.fa
+python install.py . --with-rtgtools
+./bin/hap.py ../quickstart-testdata/test_nist.b37_chr20_100kbp_at_10mb.vcf.gz ../quickstart-output/examples.vcf -f ../quickstart-testdata/test_nist.b37_chr20_100kbp_at_10mb.bed -r ../quickstart-testdata/ucsc.hg19.chr20.unittest.fasta -o happyeg.out --engine=vcfeval -l chr20:10000000-10010000
+```
+
 # DeepVariant
 
 DeepVariant is an analysis pipeline that uses a deep neural network to call
