@@ -1,0 +1,6 @@
+name: 'Docker'
+description: 'Get started with Container actions'
+author: 'ani'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
